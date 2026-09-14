@@ -1,8 +1,15 @@
+use crate::{
+    runtime::run,
+    types::{BinaryOperator, Expr, Statement, Token, Type},
+};
+mod runtime;
+mod types;
 fn main() {
-    let source = "var int x = 10 + 20 + 30; print(x);";
+    let source = "var int x = 10 + 20 * 30; print(x); print(15);";
     let tokens = tokenize(source);
     let statements = parse(&tokens);
-    println!("{statements:?}");
+    let output = run(&statements);
+    println!("{output:?}");
 }
 
 fn parse(tokens: &[Token]) -> Vec<Statement> {
@@ -184,52 +191,4 @@ fn tokenize(source: &str) -> Vec<Token> {
         }
     }
     tokens
-}
-
-enum Type {
-    Int,
-}
-#[derive(PartialEq, Debug)]
-enum Token {
-    Var,
-    IntTypeLiteral,
-    Ident(String),
-    IntValue(i32),
-    PlusOperator,
-    MinusOperator,
-    StarOperator,
-    SlashOperator,
-    Assign,
-    Semicolon,
-    LeftParen,
-    RightParen,
-}
-
-#[derive(Debug)]
-enum Expr {
-    Int(i32),
-
-    Binary {
-        left: Box<Expr>,
-        operator: BinaryOperator,
-        right: Box<Expr>,
-    },
-
-    Var(String),
-}
-
-#[derive(Debug)]
-enum BinaryOperator {
-    Add,
-    Subtract,
-    Multiply,
-    Divide,
-}
-
-#[derive(Debug)]
-enum Statement {
-    Empty,
-    VarDecl { name: String, value: Expr },
-    VarAssign { name: String, value: Expr },
-    FuncCall { name: String, arg: Expr },
 }
