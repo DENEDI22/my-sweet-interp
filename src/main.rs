@@ -1,9 +1,8 @@
 fn main() {
-    let source = "var int x = 10 + 20;";
-
+    let source = "var int x = 10 + 20 + 30; print(x);";
     let tokens = tokenize(source);
-
-    println!("{tokens:?}");
+    let statements = parse(&tokens);
+    println!("{statements:?}");
 }
 
 fn parse(tokens: &[Token]) -> Vec<Statement> {
@@ -26,19 +25,37 @@ fn parse(tokens: &[Token]) -> Vec<Statement> {
                     _ => panic!("Variable is not identified"),
                 }
                 current += 1;
-                let mut expr_tokens = Vec::new();
-                while tokens[current] != Token::Semicolon {
-                    expr_tokens.push(&tokens[current]);
-                    current += 1;
-                }
-                let statem = Statement::VarDecl {
-                    name,
-                    value: parse_expression(&expr_tokens),
-                };
+                assert_eq!(tokens[current], Token::Assign, "expected '='");
+                current += 1;
+                let value = parse_expression(&tokens, &mut current);
+                let statem = Statement::VarDecl { name, value };
+                assert_eq!(tokens[current], Token::Semicolon, "expected ';'");
+                current += 1;
+                statements.push(statem);
             }
 
-            Token::Ident(_) => {}
-
+            Token::Ident(name) => {
+                let name = name.clone();
+                match tokens.get(current + 1) {
+                    Some(Token::LeftParen) => {
+                        current += 2;
+                        let arg = parse_expression(tokens, &mut current);
+                        assert_eq!(tokens[current], Token::RightParen, "expected ')'");
+                        current += 1;
+                        assert_eq!(tokens[current], Token::Semicolon, "expected ';'");
+                        current += 1;
+                        statements.push(Statement::FuncCall { name, arg });
+                    }
+                    Some(Token::Assign) => {
+                        current += 2;
+                        let value = parse_expression(tokens, &mut current);
+                        assert_eq!(tokens[current], Token::Semicolon, "expected ';'");
+                        current += 1;
+                        statements.push(Statement::VarAssign { name, value });
+                    }
+                    _other => panic!(),
+                }
+            }
             token => {
                 panic!("Unexpected token: {:?}", token);
             }
@@ -48,7 +65,65 @@ fn parse(tokens: &[Token]) -> Vec<Statement> {
     statements
 }
 
-fn parse_expression(tokens: &[Token]) -> Expr {}
+fn parse_expression(tokens: &[Token], pos: &mut usize) -> Expr {
+    let mut left = parse_term(tokens, pos);
+    while let Some(tok) = tokens.get(*pos) {
+        let op = match tok {
+            Token::PlusOperator => BinaryOperator::Add,
+            Token::MinusOperator => BinaryOperator::Subtract,
+            _ => break,
+        };
+        *pos += 1;
+        let right = parse_term(tokens, pos);
+        left = Expr::Binary {
+            left: Box::new(left),
+            operator: op,
+            right: Box::new(right),
+        };
+    }
+    left
+}
+
+fn parse_term(tokens: &[Token], pos: &mut usize) -> Expr {
+    let mut left = parse_primary(tokens, pos);
+    while let Some(tok) = tokens.get(*pos) {
+        let op = match tok {
+            Token::StarOperator => BinaryOperator::Multiply,
+            Token::SlashOperator => BinaryOperator::Divide,
+            _ => break,
+        };
+        *pos += 1;
+        let right = parse_primary(tokens, pos);
+        left = Expr::Binary {
+            left: Box::new(left),
+            operator: op,
+            right: Box::new(right),
+        };
+    }
+    left
+}
+
+fn parse_primary(tokens: &[Token], pos: &mut usize) -> Expr {
+    match &tokens[*pos] {
+        Token::IntValue(n) => {
+            *pos += 1;
+            Expr::Int(*n)
+        }
+        Token::LeftParen => {
+            *pos += 1;
+            let e = parse_expression(tokens, pos);
+            assert_eq!(tokens[*pos], Token::RightParen, "expected ')'");
+            *pos += 1;
+            e
+        }
+        Token::Ident(name) => {
+            *pos += 1;
+            Expr::Var(name.clone())
+        }
+
+        t => panic!("Unexpected token in expression: {t:?}"),
+    }
+}
 
 fn tokenize_word(word: &str) -> Token {
     match word {
@@ -133,12 +208,28 @@ enum Token {
 #[derive(Debug)]
 enum Expr {
     Int(i32),
-    Add(Box<Expr>, Box<Expr>),
+
+    Binary {
+        left: Box<Expr>,
+        operator: BinaryOperator,
+        right: Box<Expr>,
+    },
+
+    Var(String),
+}
+
+#[derive(Debug)]
+enum BinaryOperator {
+    Add,
+    Subtract,
+    Multiply,
+    Divide,
 }
 
 #[derive(Debug)]
 enum Statement {
     Empty,
     VarDecl { name: String, value: Expr },
-    FuncCall { name: String },
+    VarAssign { name: String, value: Expr },
+    FuncCall { name: String, arg: Expr },
 }
