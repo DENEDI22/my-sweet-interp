@@ -1,4 +1,4 @@
-var bool x = true;
+var bool x = null;
 var char y = 'a';
 match x {
     true {

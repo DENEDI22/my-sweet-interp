@@ -58,6 +58,10 @@ pub(crate) enum BinaryOperator {
     Subtract,
     Multiply,
     Divide,
+    Equal,
+    LessThan,
+    MoreThan,
+    NotEqual,
 }
 #[derive(Debug)]
 pub(crate) enum RuntimeError {
@@ -73,6 +77,7 @@ pub(crate) enum RuntimeError {
         got: Value,
     },
     UnknownFunction(String),
+    Exception(String),
 }
 
 #[derive(Debug)]
@@ -108,7 +113,7 @@ pub enum Pattern {
     Wildcard,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) enum Value {
     Int(i32),
     Char(char),
@@ -131,6 +136,7 @@ impl fmt::Display for RuntimeError {
             RuntimeError::InvalidOperation { left, right, op } => {
                 write!(f, "Cannot apply {op:?} to {left:?} and {right:?}")
             }
+            RuntimeError::Exception(x) => write!(f, "{x}"),
         }
     }
 }
