@@ -1,3 +1,5 @@
+use crate::types::Token;
+
 fn tokenize_word(word: &str) -> Token {
     match word {
         "var" => Token::Var,

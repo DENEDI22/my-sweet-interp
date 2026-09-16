@@ -1,9 +1,6 @@
 use std::collections::HashMap;
 
-use crate::{
-    BinaryOperator, Expr, Statement,
-    types::{RuntimeError, Type, Value},
-};
+use crate::types::{BinaryOperator, Expr, RuntimeError, Statement, Type, Value};
 
 pub fn run(statements: &[Statement]) -> Result<(), RuntimeError> {
     let mut vars: HashMap<String, Value> = HashMap::new();
