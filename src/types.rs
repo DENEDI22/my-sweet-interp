@@ -6,7 +6,7 @@ pub(crate) enum Type {
     Char,
     Bool,
 }
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 pub(crate) enum Token {
     Var,
     BoolTypeLiteral,
@@ -26,6 +26,15 @@ pub(crate) enum Token {
     Null,
     True,
     False,
+    //match
+    Match,
+    MoreThan,
+    LessThan,
+    Equal,
+    NotEqual,
+    Wildcard,
+    CurlyBraceOpen,
+    CurlyBraceClose,
 }
 
 #[derive(Debug)]
@@ -81,6 +90,22 @@ pub(crate) enum Statement {
         name: String,
         arg: Expr,
     },
+    Match {
+        subject: Expr,
+        arms: Vec<MatchArm>,
+    },
+}
+
+#[derive(Debug)]
+pub struct MatchArm {
+    pub pattern: Pattern,
+    pub body: Vec<Statement>,
+}
+
+#[derive(Debug)]
+pub enum Pattern {
+    Literal(Expr),
+    Wildcard,
 }
 
 #[derive(Debug, Clone, Copy)]

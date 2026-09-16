@@ -9,6 +9,7 @@ fn tokenize_word(word: &str) -> Token {
         "true" => Token::True,
         "false" => Token::False,
         "null" => Token::Null,
+        "match" => Token::Match,
         _ => Token::Ident(word.to_string()),
     }
 }
@@ -54,10 +55,28 @@ pub fn tokenize(source: &str) -> Vec<Token> {
             '*' => tokens.push(Token::StarOperator),
             '/' => tokens.push(Token::SlashOperator),
 
-            '=' => tokens.push(Token::Assign),
+            '<' => tokens.push(Token::LessThan),
+            '>' => tokens.push(Token::MoreThan),
+            '!' => match chars.peek().unwrap() {
+                '=' => {
+                    chars.next().unwrap();
+                    tokens.push(Token::NotEqual);
+                }
+                _ => {}
+            },
+            '=' => match chars.peek().unwrap() {
+                '=' => {
+                    chars.next().unwrap();
+                    tokens.push(Token::Equal)
+                }
+                _ => tokens.push(Token::Assign),
+            },
+            '_' => tokens.push(Token::Wildcard),
             ';' => tokens.push(Token::Semicolon),
             '(' => tokens.push(Token::LeftParen),
             ')' => tokens.push(Token::RightParen),
+            '{' => tokens.push(Token::CurlyBraceOpen),
+            '}' => tokens.push(Token::CurlyBraceClose),
 
             c if c.is_whitespace() => {}
 

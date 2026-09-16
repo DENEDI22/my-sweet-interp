@@ -35,6 +35,7 @@ pub fn run(statements: &[Statement]) -> Result<(), RuntimeError> {
                 let v = eval(value, &vars)?;
                 vars.insert(name.clone(), v);
             }
+            Statement::Match { subject, arms } => todo!(),
         }
     }
     return Ok(());

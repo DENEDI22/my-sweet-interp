@@ -1,7 +1,11 @@
 var bool x = true;
 var char y = 'a';
-var int z = 1;
-var int n = null;
-print(x);
-print(y);
-print(z);
+match x {
+    true {
+        print(x);
+    }
+    false {
+        print(y);
+    }
+    null {}
+}

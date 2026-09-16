@@ -1,77 +1,114 @@
-use crate::types::{BinaryOperator, Expr, Statement, Token, Type};
+use crate::types::{BinaryOperator, Expr, MatchArm, Pattern, Statement, Token, Type};
 
 pub fn parse(tokens: &[Token]) -> Vec<Statement> {
     let mut statements = Vec::new();
     let mut current = 0;
 
     while current < tokens.len() {
-        match &tokens[current] {
-            Token::Var => {
-                let name: String;
-                let var_type: Type;
-                current += 1;
-                //Define type
-                match &tokens[current] {
-                    Token::IntTypeLiteral => var_type = Type::Int,
-                    Token::CharTypeLiteral => var_type = Type::Char,
-                    Token::BoolTypeLiteral => var_type = Type::Bool,
-                    _ => panic!("Unknown or undefined type"),
-                }
-                current += 1;
-                //Find name
-                match &tokens[current] {
-                    Token::Ident(x) => name = x.to_string(),
-                    _ => panic!("Variable is not identified"),
-                }
-                current += 1;
-                //Expect assign token
-                assert_eq!(tokens[current], Token::Assign, "expected '='");
-                current += 1;
-                //Define Value
-                let value = parse_expression(&tokens, &mut current);
-                match var_type {
-                    Type::Char => current += 1,
-                    _ => {}
-                }
-                let statem = Statement::VarDecl {
-                    name,
-                    value,
-                    var_type,
-                };
-                assert_eq!(tokens[current], Token::Semicolon, "expected ';'");
-                current += 1;
-                statements.push(statem);
-            }
-
-            Token::Ident(name) => {
-                let name = name.clone();
-                match tokens.get(current + 1) {
-                    Some(Token::LeftParen) => {
-                        current += 2;
-                        let arg = parse_expression(tokens, &mut current);
-                        assert_eq!(tokens[current], Token::RightParen, "expected ')'");
-                        current += 1;
-                        assert_eq!(tokens[current], Token::Semicolon, "expected ';'");
-                        current += 1;
-                        statements.push(Statement::FuncCall { name, arg });
-                    }
-                    Some(Token::Assign) => {
-                        current += 2;
-                        let value = parse_expression(tokens, &mut current);
-                        assert_eq!(tokens[current], Token::Semicolon, "expected ';'");
-                        current += 1;
-                        statements.push(Statement::VarAssign { name, value });
-                    }
-                    _other => panic!(),
-                }
-            }
-            token => {
-                panic!("Unexpected token: {:?}", token);
-            }
-        }
+        statements.push(parse_statement(tokens, &mut current));
     }
 
     statements
+}
+fn parse_statement(tokens: &[Token], current: &mut usize) -> Statement {
+    match &tokens[*current] {
+        Token::Var => {
+            let name: String;
+            let var_type: Type;
+            *current += 1;
+            //Define type
+            match &tokens[*current] {
+                Token::IntTypeLiteral => var_type = Type::Int,
+                Token::CharTypeLiteral => var_type = Type::Char,
+                Token::BoolTypeLiteral => var_type = Type::Bool,
+                _ => panic!("Unknown or undefined type"),
+            }
+            *current += 1;
+            //Find name
+            match &tokens[*current] {
+                Token::Ident(x) => name = x.to_string(),
+                _ => panic!("Variable is not identified"),
+            }
+            *current += 1;
+            //Expect assign token
+            assert_eq!(tokens[*current], Token::Assign, "expected '='");
+            *current += 1;
+            //Define Value
+            let value = parse_expression(&tokens, current);
+
+            let statem = Statement::VarDecl {
+                name,
+                value,
+                var_type,
+            };
+            assert_eq!(tokens[*current], Token::Semicolon, "expected ';'");
+            *current += 1;
+            statem
+        }
+        Token::Ident(name) => {
+            let name = name.clone();
+            match tokens.get(*current + 1) {
+                Some(Token::LeftParen) => {
+                    *current += 2;
+                    let arg = parse_expression(tokens, current);
+                    assert_eq!(tokens[*current], Token::RightParen, "expected ')'");
+                    *current += 1;
+                    assert_eq!(tokens[*current], Token::Semicolon, "expected ';'");
+                    *current += 1;
+                    Statement::FuncCall { name, arg }
+                }
+                Some(Token::Assign) => {
+                    *current += 2;
+                    let value = parse_expression(tokens, current);
+                    assert_eq!(tokens[*current], Token::Semicolon, "expected ';'");
+                    *current += 1;
+                    Statement::VarAssign { name, value }
+                }
+                _other => panic!(),
+            }
+        }
+        Token::Match => {
+            *current += 1;
+            let subj = parse_expression(tokens, current);
+            assert_eq!(tokens[*current], Token::CurlyBraceOpen, "expected '{{'");
+            *current += 1;
+            let mut arms: Vec<MatchArm> = Vec::new();
+            while !matches!(tokens[*current], Token::CurlyBraceClose) {
+                let arm_pattern: Pattern = match tokens[*current] {
+                    Token::Wildcard => {
+                        *current += 1;
+                        Pattern::Wildcard
+                    }
+                    _ => Pattern::Literal(parse_expression(tokens, current)),
+                };
+                assert_eq!(tokens[*current], Token::CurlyBraceOpen, "expected '{{'");
+                let body = parse_block(tokens, current);
+                arms.push(MatchArm {
+                    pattern: arm_pattern,
+                    body: body,
+                });
+            }
+            *current += 1;
+            Statement::Match {
+                subject: subj,
+                arms,
+            }
+        }
+        token => {
+            panic!("Unexpected token: {token:?} at position {current:?}");
+        }
+    }
+}
+
+fn parse_block(tokens: &[Token], current: &mut usize) -> Vec<Statement> {
+    assert_eq!(tokens[*current], Token::CurlyBraceOpen);
+    *current += 1;
+    let mut body = Vec::new();
+    while !matches!(tokens[*current], Token::CurlyBraceClose) {
+        body.push(parse_statement(tokens, current));
+    }
+    *current += 1;
+    body
 }
 
 fn parse_expression(tokens: &[Token], pos: &mut usize) -> Expr {
@@ -149,6 +186,12 @@ fn parse_primary(tokens: &[Token], pos: &mut usize) -> Expr {
                 }
                 _ => panic!("Unexpected token for char type value"),
             }
+            *pos += 1;
+            assert_eq!(
+                tokens[*pos],
+                Token::SingleQuote,
+                "expected ''' (single quote)"
+            );
             *pos += 1;
             Expr::Char(expected_char)
         }
