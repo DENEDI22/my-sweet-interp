@@ -140,6 +140,10 @@ fn parse_primary(tokens: &[Token], pos: &mut usize) -> Expr {
             *pos += 1;
             Expr::Bool(false)
         }
+        Token::Null => {
+            *pos += 1;
+            Expr::Null
+        }
         Token::SingleQuote => {
             *pos += 1;
             let expected_char: char;
@@ -187,6 +191,7 @@ fn tokenize_word(word: &str) -> Token {
         "int" => Token::IntTypeLiteral,
         "true" => Token::True,
         "false" => Token::False,
+        "null" => Token::Null,
         _ => Token::Ident(word.to_string()),
     }
 }
