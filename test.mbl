@@ -1,6 +1,7 @@
 var bool x = null;
 var char y = 'a';
-match x {
+var int z = 3 + 8;
+match z != 5 {
     true {
         print(x);
     }

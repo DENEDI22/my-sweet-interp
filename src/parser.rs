@@ -112,6 +112,30 @@ fn parse_block(tokens: &[Token], current: &mut usize) -> Vec<Statement> {
 }
 
 fn parse_expression(tokens: &[Token], pos: &mut usize) -> Expr {
+    parse_comparison(tokens, pos)
+}
+
+fn parse_comparison(tokens: &[Token], pos: &mut usize) -> Expr {
+    let mut left = parse_additive(tokens, pos);
+    loop {
+        let op = match tokens[*pos] {
+            Token::MoreThan => BinaryOperator::MoreThan,
+            Token::LessThan => BinaryOperator::LessThan,
+            Token::Equal => BinaryOperator::Equal,
+            Token::NotEqual => BinaryOperator::NotEqual,
+            _ => break,
+        };
+        *pos += 1;
+        let right = parse_additive(tokens, pos);
+        left = Expr::Binary {
+            left: Box::new(left),
+            operator: op,
+            right: Box::new(right),
+        };
+    }
+    left
+}
+fn parse_additive(tokens: &[Token], pos: &mut usize) -> Expr {
     let mut left = parse_term(tokens, pos);
     while let Some(tok) = tokens.get(*pos) {
         let op = match tok {
@@ -129,7 +153,6 @@ fn parse_expression(tokens: &[Token], pos: &mut usize) -> Expr {
     }
     left
 }
-
 fn parse_term(tokens: &[Token], pos: &mut usize) -> Expr {
     let mut left = parse_primary(tokens, pos);
     while let Some(tok) = tokens.get(*pos) {
