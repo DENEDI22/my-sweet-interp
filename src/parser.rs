@@ -94,6 +94,19 @@ fn parse_statement(tokens: &[Token], current: &mut usize) -> Statement {
                 arms,
             }
         }
+        Token::Loop => {
+            *current += 1;
+            assert_eq!(tokens[*current], Token::CurlyBraceOpen, "expected '{{'");
+            let stmt = Statement::Loop {
+                body: parse_block(tokens, current),
+            };
+            *current += 1;
+            stmt
+        }
+        Token::Break => {
+            *current += 1;
+            Statement::Break
+        }
         token => {
             panic!("Unexpected token: {token:?} at position {current:?}");
         }

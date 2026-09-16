@@ -35,6 +35,9 @@ pub(crate) enum Token {
     Wildcard,
     CurlyBraceOpen,
     CurlyBraceClose,
+    //loop
+    Loop,
+    Break,
 }
 
 #[derive(Debug)]
@@ -78,6 +81,7 @@ pub(crate) enum RuntimeError {
     },
     UnknownFunction(String),
     Exception(String),
+    UnexpectedBreak,
 }
 
 #[derive(Debug)]
@@ -99,6 +103,10 @@ pub(crate) enum Statement {
         subject: Expr,
         arms: Vec<MatchArm>,
     },
+    Loop {
+        body: Vec<Statement>,
+    },
+    Break,
 }
 
 #[derive(Debug)]
@@ -137,6 +145,7 @@ impl fmt::Display for RuntimeError {
                 write!(f, "Cannot apply {op:?} to {left:?} and {right:?}")
             }
             RuntimeError::Exception(x) => write!(f, "{x}"),
+            RuntimeError::UnexpectedBreak => write!(f, "Break found out of loop code"),
         }
     }
 }

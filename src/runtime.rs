@@ -16,6 +16,19 @@ pub fn run(statements: &[Statement]) -> Result<(), RuntimeError> {
     return Ok(());
 }
 
+fn run_loop(
+    statements: &[Statement],
+    vars: &mut HashMap<String, Value>,
+) -> Result<(), RuntimeError> {
+    match run_block(statements, vars) {
+        Ok(_) => run_loop(statements, vars),
+        Err(e) => match e {
+            RuntimeError::UnexpectedBreak => Ok(()),
+            _ => return Err(e),
+        },
+    }
+}
+
 fn run_block(
     statements: &[Statement],
     vars: &mut HashMap<String, Value>,
@@ -111,10 +124,11 @@ fn run_statement(
                 }
             }
         }
+        Statement::Loop { body } => run_loop(body, vars)?,
+        Statement::Break => return Err(RuntimeError::UnexpectedBreak),
     }
     Ok(())
 }
-
 fn eval(expr: &Expr, vars: &HashMap<String, Value>) -> Result<Value, RuntimeError> {
     match expr {
         Expr::Int(n) => Ok(Value::Int(*n)),

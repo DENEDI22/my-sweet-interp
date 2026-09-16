@@ -10,6 +10,8 @@ fn tokenize_word(word: &str) -> Token {
         "false" => Token::False,
         "null" => Token::Null,
         "match" => Token::Match,
+        "loop" => Token::Loop,
+        "break" => Token::Break,
         _ => Token::Ident(word.to_string()),
     }
 }
