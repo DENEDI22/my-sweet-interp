@@ -1,12 +1,16 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt};
 
 use crate::{BinaryOperator, Expr, Statement};
 
 pub fn run(statements: &[Statement]) {
-    let mut vars: HashMap<String, i32> = HashMap::new();
+    let mut vars: HashMap<String, Value> = HashMap::new();
     for stmt in statements {
         match stmt {
-            Statement::VarDecl { name, value } => {
+            Statement::VarDecl {
+                name,
+                value,
+                var_type,
+            } => {
                 let v = eval(value, &vars);
                 vars.insert(name.clone(), v);
             }
@@ -23,12 +27,15 @@ pub fn run(statements: &[Statement]) {
     }
 }
 
-fn eval(expr: &Expr, vars: &HashMap<String, i32>) -> i32 {
+fn eval(expr: &Expr, vars: &HashMap<String, Value>) -> Value {
     match expr {
-        Expr::Int(n) => *n,
+        Expr::Int(n) => Value::Int(*n),
+        Expr::Bool(b) => Value::Bool(*b),
+        Expr::Char(c) => Value::Char(*c),
+        Expr::Null => Value::Null,
         Expr::Var(name) => *vars
             .get(name)
-            .unwrap_or_else(|| panic!("Undefined variable: {name}")),
+            .unwrap_or_else(|| panic!("Undefined variable: {name:?}")),
         Expr::Binary {
             left,
             operator,
@@ -36,12 +43,43 @@ fn eval(expr: &Expr, vars: &HashMap<String, i32>) -> i32 {
         } => {
             let l = eval(left, vars);
             let r = eval(right, vars);
-            match operator {
-                BinaryOperator::Add => l + r,
-                BinaryOperator::Subtract => l - r,
-                BinaryOperator::Multiply => l * r,
-                BinaryOperator::Divide => l / r,
-            }
+            eval_binary(&l, &r, &operator)
+        }
+        Expr::Compare {
+            left,
+            operator,
+            right,
+        } => todo!(),
+        Expr::Predicate() => todo!(),
+    }
+}
+
+fn eval_binary(left: &Value, right: &Value, op: &BinaryOperator) -> Value {
+    match (left, op, right) {
+        (Value::Int(a), BinaryOperator::Add, Value::Int(b)) => Value::Int(a + b),
+        (Value::Int(a), BinaryOperator::Add, Value::Null) => Value::Int(*a),
+        (Value::Null, BinaryOperator::Add, Value::Int(b)) => Value::Int(*b),
+        (Value::Int(a), BinaryOperator::Subtract, Value::Int(b)) => Value::Int(a - b),
+        (Value::Int(a), BinaryOperator::Multiply, Value::Int(b)) => Value::Int(a * b),
+        (Value::Int(a), BinaryOperator::Divide, Value::Int(b)) => Value::Int(a / b),
+        (left, op, right) => panic!("Cannot apply {op:?} to {left:?} and {right:?}"),
+    }
+}
+#[derive(Debug, Clone, Copy)]
+enum Value {
+    Int(i32),
+    Char(char),
+    Bool(bool),
+    Null,
+}
+
+impl fmt::Display for Value {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Value::Int(n) => write!(f, "{n}"),
+            Value::Bool(b) => write!(f, "{b}"),
+            Value::Char(c) => write!(f, "{c}"),
+            Value::Null => write!(f, "null"),
         }
     }
 }

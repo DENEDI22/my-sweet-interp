@@ -2,14 +2,16 @@ use crate::{
     runtime::run,
     types::{BinaryOperator, Expr, Statement, Token, Type},
 };
+use std::fs;
 mod runtime;
 mod types;
 fn main() {
-    let source = "var int x = 10 + 20 * 30; print(x); print(15);";
-    let tokens = tokenize(source);
+    let source = fs::read_to_string("test.mbl").expect("Could not find the test.test file.");
+    let tokens = tokenize(&source);
+    print!("Tokens: \n {tokens:?} \n ");
     let statements = parse(&tokens);
-    let output = run(&statements);
-    println!("{output:?}");
+    print!("Statements: \n {statements:?} \n\n");
+    _ = run(&statements);
 }
 
 fn parse(tokens: &[Token]) -> Vec<Statement> {
@@ -22,20 +24,34 @@ fn parse(tokens: &[Token]) -> Vec<Statement> {
                 let mut name: String;
                 let mut var_type: Type;
                 current += 1;
+                //Define type
                 match &tokens[current] {
                     Token::IntTypeLiteral => var_type = Type::Int,
+                    Token::CharTypeLiteral => var_type = Type::Char,
+                    Token::BoolTypeLiteral => var_type = Type::Bool,
                     _ => panic!("Unknown or undefined type"),
                 }
                 current += 1;
+                //Find name
                 match &tokens[current] {
                     Token::Ident(x) => name = x.to_string(),
                     _ => panic!("Variable is not identified"),
                 }
                 current += 1;
+                //Expect assign token
                 assert_eq!(tokens[current], Token::Assign, "expected '='");
                 current += 1;
+                //Define Value
                 let value = parse_expression(&tokens, &mut current);
-                let statem = Statement::VarDecl { name, value };
+                match var_type {
+                    Type::Char => current += 1,
+                    _ => {}
+                }
+                let statem = Statement::VarDecl {
+                    name,
+                    value,
+                    var_type,
+                };
                 assert_eq!(tokens[current], Token::Semicolon, "expected ';'");
                 current += 1;
                 statements.push(statem);
@@ -116,6 +132,37 @@ fn parse_primary(tokens: &[Token], pos: &mut usize) -> Expr {
             *pos += 1;
             Expr::Int(*n)
         }
+        Token::True => {
+            *pos += 1;
+            Expr::Bool(true)
+        }
+        Token::False => {
+            *pos += 1;
+            Expr::Bool(false)
+        }
+        Token::SingleQuote => {
+            *pos += 1;
+            let expected_char: char;
+            match &tokens[*pos] {
+                Token::Ident(c) => {
+                    if c.len() > 1 {
+                        panic!("Only one character is expected");
+                    }
+                    expected_char = c.chars().next().unwrap();
+                }
+
+                Token::IntValue(c) => {
+                    if c.to_string().len() > 1 {
+                        panic!("Only one character is expected");
+                    }
+                    expected_char = c.to_string().chars().next().unwrap();
+                }
+                _ => panic!("Unexpected token for char type value"),
+            }
+            *pos += 1;
+            Expr::Char(expected_char)
+        }
+
         Token::LeftParen => {
             *pos += 1;
             let e = parse_expression(tokens, pos);
@@ -135,7 +182,11 @@ fn parse_primary(tokens: &[Token], pos: &mut usize) -> Expr {
 fn tokenize_word(word: &str) -> Token {
     match word {
         "var" => Token::Var,
+        "char" => Token::CharTypeLiteral,
+        "bool" => Token::BoolTypeLiteral,
         "int" => Token::IntTypeLiteral,
+        "true" => Token::True,
+        "false" => Token::False,
         _ => Token::Ident(word.to_string()),
     }
 }
@@ -175,6 +226,7 @@ fn tokenize(source: &str) -> Vec<Token> {
                 tokens.push(tokenize_word(&word));
             }
 
+            '\'' => tokens.push(Token::SingleQuote),
             '+' => tokens.push(Token::PlusOperator),
             '-' => tokens.push(Token::MinusOperator),
             '*' => tokens.push(Token::StarOperator),
