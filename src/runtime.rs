@@ -1,38 +1,39 @@
 use std::collections::HashMap;
 
 use crate::types::{
-    self, BinaryOperator, Expr,
+    BinaryOperator, Expr, FlowState,
     Pattern::{Literal, Wildcard},
     RuntimeError::{self, Exception},
     Statement, Type, Value,
 };
 
-pub fn run(statements: &[Statement]) -> Result<(), RuntimeError> {
+pub fn run(statements: &[Statement]) -> Result<FlowState, RuntimeError> {
     let mut vars: HashMap<String, Value> = HashMap::new();
     let mut global: Vec<String> = Vec::new();
     for stmt in statements {
         run_statement(stmt, &mut vars, &mut global)?;
     }
-    return Ok(());
+    return Ok(FlowState::Finished);
 }
 
 fn run_loop(
     statements: &[Statement],
     vars: &mut HashMap<String, Value>,
-) -> Result<(), RuntimeError> {
-    match run_block(statements, vars) {
-        Ok(_) => run_loop(statements, vars),
-        Err(e) => match e {
-            RuntimeError::UnexpectedBreak => Ok(()),
-            _ => return Err(e),
-        },
+) -> Result<FlowState, RuntimeError> {
+    loop {
+        match run_block(statements, vars) {
+            Ok(FlowState::Break) => break,
+            Err(e) => return Err(e),
+            _ => {}
+        }
     }
+    Ok(FlowState::None)
 }
 
 fn run_block(
     statements: &[Statement],
     vars: &mut HashMap<String, Value>,
-) -> Result<(), RuntimeError> {
+) -> Result<FlowState, RuntimeError> {
     let mut current_scope: Vec<String> = Vec::new();
 
     for stmt in statements {
@@ -42,14 +43,14 @@ fn run_block(
     for name in current_scope {
         vars.remove(&name).unwrap();
     }
-    Ok(())
+    Ok(FlowState::None)
 }
 
 fn run_statement(
     stmt: &Statement,
     vars: &mut HashMap<String, Value>,
     current_scope: &mut Vec<String>,
-) -> Result<(), RuntimeError> {
+) -> Result<FlowState, RuntimeError> {
     match stmt {
         Statement::VarDecl {
             name,
@@ -124,10 +125,12 @@ fn run_statement(
                 }
             }
         }
-        Statement::Loop { body } => run_loop(body, vars)?,
-        Statement::Break => return Err(RuntimeError::UnexpectedBreak),
+        Statement::Loop { body } => {
+            run_loop(body, vars)?;
+        }
+        Statement::Break => return Ok(FlowState::Break),
     }
-    Ok(())
+    Ok(FlowState::None)
 }
 fn eval(expr: &Expr, vars: &HashMap<String, Value>) -> Result<Value, RuntimeError> {
     match expr {

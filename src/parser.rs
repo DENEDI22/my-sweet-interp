@@ -10,6 +10,7 @@ pub fn parse(tokens: &[Token]) -> Vec<Statement> {
 
     statements
 }
+
 fn parse_statement(tokens: &[Token], current: &mut usize) -> Statement {
     match &tokens[*current] {
         Token::Var => {

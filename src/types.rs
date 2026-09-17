@@ -81,7 +81,13 @@ pub(crate) enum RuntimeError {
     },
     UnknownFunction(String),
     Exception(String),
-    UnexpectedBreak,
+}
+
+#[derive(Debug)]
+pub(crate) enum FlowState {
+    None,
+    Break,
+    Finished,
 }
 
 #[derive(Debug)]
@@ -145,7 +151,6 @@ impl fmt::Display for RuntimeError {
                 write!(f, "Cannot apply {op:?} to {left:?} and {right:?}")
             }
             RuntimeError::Exception(x) => write!(f, "{x}"),
-            RuntimeError::UnexpectedBreak => write!(f, "Break found out of loop code"),
         }
     }
 }

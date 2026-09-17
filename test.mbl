@@ -1,12 +1,15 @@
-var bool x = null;
+var bool x = true;
 var char y = 'a';
-var int z = 3 + 8;
-match z != 5 {
-    true {
-        print(x);
+var int i = 1;
+var int tmp = 100;
+loop {
+    match i > tmp {
+        true {
+            break
+        }
+        false {
+            print(i);
+            i = i + 1;
+        }
     }
-    false {
-        print(y);
-    }
-    null {}
 }
