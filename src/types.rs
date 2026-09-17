@@ -40,7 +40,7 @@ pub(crate) enum Token {
     Break,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) enum Expr {
     Null,
     Int(i32),
@@ -53,6 +53,7 @@ pub(crate) enum Expr {
     },
 
     Var(String),
+    VarId(usize),
 }
 
 #[derive(Debug, Clone)]
@@ -84,21 +85,36 @@ pub(crate) enum RuntimeError {
 }
 
 #[derive(Debug)]
+pub enum ResolutionError {
+    UndefinedVariable(String),
+    VariableIsAlreadyDefined(String),
+}
+
+#[derive(Debug)]
 pub(crate) enum FlowState {
     None,
     Break,
     Finished,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) enum Statement {
     VarDecl {
         name: String,
         value: Expr,
         var_type: Type,
     },
+    VarIdDecl {
+        id: usize,
+        value: Expr,
+        var_type: Type,
+    },
     VarAssign {
         name: String,
+        value: Expr,
+    },
+    VarAssignById {
+        id: usize,
         value: Expr,
     },
     FuncCall {
@@ -115,13 +131,13 @@ pub(crate) enum Statement {
     Break,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct MatchArm {
     pub pattern: Pattern,
     pub body: Vec<Statement>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Pattern {
     Literal(Expr),
     Wildcard,

@@ -1,6 +1,7 @@
-use crate::{parser::parse, runtime::run, tokenizer::tokenize};
+use crate::{parser::parse, resolver::Resolver, runtime::run, tokenizer::tokenize};
 use std::fs;
 mod parser;
+mod resolver;
 mod runtime;
 mod tokenizer;
 mod types;
@@ -16,16 +17,38 @@ fn main() {
 
     let source = fs::read_to_string(path).expect("Could not find the file.");
     let tokens = tokenize(&source);
+    let mut resolver = Resolver::new();
     match cmd {
         "tokens" => println!("{tokens:#?}"),
         "statements" => println!("{:#?}", parse(&tokens)),
-        "run" => match run(&parse(&tokens)) {
-            Ok(_) => std::process::exit(0),
-            Err(e) => {
-                print!("ERROR: {e}");
-                std::process::exit(1);
-            }
-        },
+        "rstatements" => {
+            match resolver.resolve_block(&parse(&tokens)) {
+                Ok(s) => {
+                    println!("{:#?}", s)
+                }
+
+                Err(e) => {
+                    print!("ERROR: {e:?}");
+                    std::process::exit(1);
+                }
+            };
+        }
+        "run" => {
+            match resolver.resolve_block(&parse(&tokens)) {
+                Ok(s) => match run(&s, &resolver) {
+                    Ok(_) => std::process::exit(0),
+                    Err(e) => {
+                        print!("ERROR: {e}");
+                        std::process::exit(1);
+                    }
+                },
+
+                Err(e) => {
+                    print!("ERROR: {e:?}");
+                    std::process::exit(1);
+                }
+            };
+        }
         _ => {
             eprintln!("unknown command: {cmd}");
             std::process::exit(2);

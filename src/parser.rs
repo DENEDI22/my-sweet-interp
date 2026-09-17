@@ -101,7 +101,6 @@ fn parse_statement(tokens: &[Token], current: &mut usize) -> Statement {
             let stmt = Statement::Loop {
                 body: parse_block(tokens, current),
             };
-            *current += 1;
             stmt
         }
         Token::Break => {

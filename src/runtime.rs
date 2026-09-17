@@ -1,29 +1,39 @@
-use std::collections::HashMap;
-
-use crate::types::{
-    BinaryOperator, Expr, FlowState,
-    Pattern::{Literal, Wildcard},
-    RuntimeError::{self, Exception},
-    Statement, Type, Value,
+use crate::{
+    resolver::Resolver,
+    types::{
+        BinaryOperator, Expr, FlowState,
+        Pattern::{Literal, Wildcard},
+        RuntimeError::{self, Exception},
+        Statement, Type, Value,
+    },
 };
 
-pub fn run(statements: &[Statement]) -> Result<FlowState, RuntimeError> {
-    let mut vars: HashMap<String, Value> = HashMap::new();
-    let mut global: Vec<String> = Vec::new();
+pub fn run(statements: &[Statement], resolver: &Resolver) -> Result<FlowState, RuntimeError> {
+    let mut vars: Vec<Value> = Vec::new();
+    resolver.names.iter().for_each(|_| {
+        vars.push(Value::Null);
+    });
     for stmt in statements {
-        run_statement(stmt, &mut vars, &mut global)?;
+        match run_statement(stmt, &mut vars, resolver)? {
+            FlowState::Break => {
+                return Err(RuntimeError::Exception(
+                    "Break found out of a loop scope".to_string(),
+                ));
+            }
+            _ => {}
+        };
     }
     return Ok(FlowState::Finished);
 }
 
 fn run_loop(
     statements: &[Statement],
-    vars: &mut HashMap<String, Value>,
+    vars: &mut Vec<Value>,
+    resolver: &Resolver,
 ) -> Result<FlowState, RuntimeError> {
     loop {
-        match run_block(statements, vars) {
-            Ok(FlowState::Break) => break,
-            Err(e) => return Err(e),
+        match run_block(statements, vars, resolver)? {
+            FlowState::Break => break,
             _ => {}
         }
     }
@@ -32,32 +42,30 @@ fn run_loop(
 
 fn run_block(
     statements: &[Statement],
-    vars: &mut HashMap<String, Value>,
+    vars: &mut Vec<Value>,
+    resolver: &Resolver,
 ) -> Result<FlowState, RuntimeError> {
-    let mut current_scope: Vec<String> = Vec::new();
-
     for stmt in statements {
-        run_statement(stmt, vars, &mut current_scope)?;
-    }
-
-    for name in current_scope {
-        vars.remove(&name).unwrap();
+        match run_statement(stmt, vars, resolver)? {
+            FlowState::None => {}
+            flow => return Ok(flow),
+        }
     }
     Ok(FlowState::None)
 }
 
 fn run_statement(
     stmt: &Statement,
-    vars: &mut HashMap<String, Value>,
-    current_scope: &mut Vec<String>,
+    vars: &mut Vec<Value>,
+    resolver: &Resolver,
 ) -> Result<FlowState, RuntimeError> {
     match stmt {
-        Statement::VarDecl {
-            name,
+        Statement::VarIdDecl {
+            id,
             value,
             var_type,
         } => {
-            let v = eval(value, &vars)?;
+            let v = eval(value, &vars, resolver)?;
             let ok = matches!(
                 (&v, var_type),
                 (Value::Int(_), Type::Int)
@@ -71,25 +79,24 @@ fn run_statement(
                     got: v,
                 });
             }
-            vars.insert(name.clone(), v);
-            current_scope.push(name.clone());
+            vars[*id] = v;
         }
         Statement::FuncCall { name, arg } => match name.as_str() {
-            "print" => println!("{}", eval(arg, &vars)?),
+            "print" => println!("{}", eval(arg, &vars, resolver)?),
             _ => return Err(RuntimeError::UnknownFunction(name.clone())),
         },
-        Statement::VarAssign { name, value } => {
-            let v = eval(value, &vars)?;
-            vars.insert(name.clone(), v);
+        Statement::VarAssignById { id, value } => {
+            let v = eval(value, &vars, resolver)?;
+            vars[*id] = v;
         }
         Statement::Match { subject, arms } => {
-            let subj = eval(subject, vars)?;
+            let subj = eval(subject, vars, resolver)?;
             let mut arm_pattern_values: Vec<Value> = Vec::new();
             let mut has_wildcard_statement = false;
             for arm in arms {
                 match &arm.pattern {
                     Literal(expr) => {
-                        let value = eval(expr, vars)?;
+                        let value = eval(expr, vars, resolver)?;
                         if are_same_type(&subj, &value) & !arm_pattern_values.contains(&value) {
                             arm_pattern_values.push(value);
                         } else {
@@ -112,47 +119,52 @@ fn run_statement(
             for arm in arms {
                 match &arm.pattern {
                     Literal(expr) => {
-                        let value = eval(expr, vars)?;
+                        let value = eval(expr, vars, resolver)?;
                         if value == subj {
-                            run_block(&arm.body, vars)?;
-                            break;
+                            return run_block(&arm.body, vars, resolver);
                         }
                     }
                     Wildcard => {
-                        run_block(&arm.body, vars)?;
-                        break;
+                        return run_block(&arm.body, vars, resolver);
                     }
                 }
             }
         }
         Statement::Loop { body } => {
-            run_loop(body, vars)?;
+            run_loop(body, vars, resolver)?;
         }
         Statement::Break => return Ok(FlowState::Break),
+        Statement::VarDecl {
+            name: _,
+            value: _,
+            var_type: _,
+        } => unreachable!(),
+        Statement::VarAssign { name: _, value: _ } => unreachable!(),
     }
     Ok(FlowState::None)
 }
-fn eval(expr: &Expr, vars: &HashMap<String, Value>) -> Result<Value, RuntimeError> {
+fn eval(expr: &Expr, vars: &Vec<Value>, resolver: &Resolver) -> Result<Value, RuntimeError> {
     match expr {
         Expr::Int(n) => Ok(Value::Int(*n)),
         Expr::Bool(b) => Ok(Value::Bool(*b)),
         Expr::Char(c) => Ok(Value::Char(*c)),
         Expr::Null => Ok(Value::Null),
-        Expr::Var(name) => {
-            let get = vars.get(name);
-            match get {
-                Some(v) => Ok(*v),
-                None => Err(RuntimeError::UndefinedVariable(name.clone())),
-            }
-        }
+        Expr::Var(_) => unreachable!(),
         Expr::Binary {
             left,
             operator,
             right,
         } => {
-            let l = eval(left, vars)?;
-            let r = eval(right, vars)?;
+            let l = eval(left, vars, resolver)?;
+            let r = eval(right, vars, resolver)?;
             eval_binary(&l, &r, &operator)
+        }
+        Expr::VarId(i) => {
+            let get = vars.get(*i);
+            match get {
+                Some(v) => Ok(*v),
+                None => Err(RuntimeError::UndefinedVariable(resolver.names[*i].clone())),
+            }
         }
     }
 }
