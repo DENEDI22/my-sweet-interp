@@ -1,15 +1,13 @@
-var bool x = true;
-var char y = 'a';
-var int i = 1;
-var int tmp = 100;
+var str i = "!";
+var int counter = 0;
 loop {
-    match i > tmp {
+    match counter < 100000 {
         true {
-            break
+            i = i + "!";
+            counter = counter + 1;
         }
-        false {
-            print(i);
-            i = i + 1;
+        _ {
+            break
         }
     }
 }

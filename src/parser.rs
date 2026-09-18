@@ -22,6 +22,7 @@ fn parse_statement(tokens: &[Token], current: &mut usize) -> Statement {
                 Token::IntTypeLiteral => var_type = Type::Int,
                 Token::CharTypeLiteral => var_type = Type::Char,
                 Token::BoolTypeLiteral => var_type = Type::Bool,
+                Token::StringTypeLiteral => var_type = Type::String,
                 _ => panic!("Unknown or undefined type"),
             }
             *current += 1;
@@ -232,6 +233,22 @@ fn parse_primary(tokens: &[Token], pos: &mut usize) -> Expr {
             Expr::Char(expected_char)
         }
 
+        Token::DoubleQuotes => {
+            *pos += 1;
+            let expected_string = match &tokens[*pos] {
+                Token::StringValue(s) => s,
+                _ => panic!("Expected string value"),
+            };
+            *pos += 1;
+            assert_eq!(
+                tokens[*pos],
+                Token::DoubleQuotes,
+                "Closing double quotes not found."
+            );
+            *pos += 1;
+            Expr::String(expected_string.clone())
+        }
+
         Token::LeftParen => {
             *pos += 1;
             let e = parse_expression(tokens, pos);
@@ -239,6 +256,7 @@ fn parse_primary(tokens: &[Token], pos: &mut usize) -> Expr {
             *pos += 1;
             e
         }
+
         Token::Ident(name) => {
             *pos += 1;
             Expr::Var(name.clone())

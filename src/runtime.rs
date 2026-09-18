@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use crate::{
     resolver::Resolver,
     types::{
@@ -70,6 +72,7 @@ fn run_statement(
                 (&v, var_type),
                 (Value::Int(_), Type::Int)
                     | (Value::Char(_), Type::Char)
+                    | (Value::String(_), Type::String)
                     | (Value::Bool(_), Type::Bool)
                     | (Value::Null, _)
             );
@@ -162,10 +165,11 @@ fn eval(expr: &Expr, vars: &Vec<Value>, resolver: &Resolver) -> Result<Value, Ru
         Expr::VarId(i) => {
             let get = vars.get(*i);
             match get {
-                Some(v) => Ok(*v),
+                Some(v) => Ok(v.clone()),
                 None => Err(RuntimeError::UndefinedVariable(resolver.names[*i].clone())),
             }
         }
+        Expr::String(s) => Ok(Value::String(Rc::from(s.clone()))),
     }
 }
 
@@ -174,6 +178,7 @@ fn are_same_type(left: &Value, right: &Value) -> bool {
         (Value::Bool(_), Value::Bool(_)) => true,
         (Value::Int(_), Value::Int(_)) => true,
         (Value::Char(_), Value::Char(_)) => true,
+        (Value::String(_), Value::String(_)) => true,
         (_, Value::Null) => true,
         (Value::Null, _) => true,
         _ => false,
@@ -200,6 +205,17 @@ fn eval_binary(left: &Value, right: &Value, op: &BinaryOperator) -> Result<Value
         (Value::Int(a), BinaryOperator::NotEqual, Value::Int(b)) => Ok(Value::Bool(a != b)),
         (Value::Bool(a), BinaryOperator::NotEqual, Value::Bool(b)) => Ok(Value::Bool(a != b)),
         (Value::Bool(a), BinaryOperator::Equal, Value::Bool(b)) => Ok(Value::Bool(a == b)),
+        (Value::String(a), BinaryOperator::Equal, Value::String(b)) => Ok(Value::Bool(a == b)),
+        (Value::String(a), BinaryOperator::NotEqual, Value::String(b)) => Ok(Value::Bool(a != b)),
+        //concat
+        (Value::String(a), BinaryOperator::Add, Value::String(b)) => {
+            let mut s = String::with_capacity(a.len() + b.len());
+            s.push_str(a);
+            s.push_str(b);
+            Ok(Value::String(Rc::from(s)))
+        }
+        (Value::String(a), BinaryOperator::Add, Value::Null) => Ok(Value::String(a.clone())),
+        (Value::Null, BinaryOperator::Add, Value::String(a)) => Ok(Value::String(a.clone())),
         (left, op, right) => Err(RuntimeError::InvalidOperation {
             left: left.clone(),
             right: right.clone(),

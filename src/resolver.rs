@@ -112,6 +112,7 @@ impl Resolver {
             Expr::Int(i) => Expr::Int(*i),
             Expr::Bool(b) => Expr::Bool(*b),
             Expr::Char(c) => Expr::Char(*c),
+            Expr::String(s) => Expr::String(s.clone()),
             Expr::VarId(_) => unreachable!(),
         })
     }

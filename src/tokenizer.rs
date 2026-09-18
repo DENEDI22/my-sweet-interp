@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use crate::types::Token;
 
 fn tokenize_word(word: &str) -> Token {
@@ -6,6 +8,7 @@ fn tokenize_word(word: &str) -> Token {
         "char" => Token::CharTypeLiteral,
         "bool" => Token::BoolTypeLiteral,
         "int" => Token::IntTypeLiteral,
+        "str" => Token::StringTypeLiteral,
         "true" => Token::True,
         "false" => Token::False,
         "null" => Token::Null,
@@ -79,6 +82,24 @@ pub fn tokenize(source: &str) -> Vec<Token> {
             ')' => tokens.push(Token::RightParen),
             '{' => tokens.push(Token::CurlyBraceOpen),
             '}' => tokens.push(Token::CurlyBraceClose),
+            '"' => {
+                tokens.push(Token::DoubleQuotes);
+                let mut buff = String::new();
+
+                while let Some(next) = chars.peek() {
+                    if *next != '"' {
+                        buff.push(chars.next().unwrap());
+                    } else {
+                        break;
+                    }
+                }
+                tokens.push(Token::StringValue(Rc::from(buff)));
+                if matches!(chars.next().unwrap(), '"') {
+                    tokens.push(Token::DoubleQuotes);
+                } else {
+                    panic!("Expected closing DoubleQuotes")
+                }
+            }
 
             c if c.is_whitespace() => {}
 

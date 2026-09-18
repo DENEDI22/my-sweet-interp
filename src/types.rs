@@ -1,10 +1,11 @@
-use std::fmt;
+use std::{fmt, rc::Rc};
 
 #[derive(Debug, Clone)]
 pub(crate) enum Type {
     Int,
     Char,
     Bool,
+    String,
 }
 #[derive(PartialEq, Debug, Clone)]
 pub(crate) enum Token {
@@ -12,8 +13,10 @@ pub(crate) enum Token {
     BoolTypeLiteral,
     IntTypeLiteral,
     CharTypeLiteral,
+    StringTypeLiteral,
     Ident(String),
     IntValue(i32),
+    StringValue(Rc<str>),
     PlusOperator,
     MinusOperator,
     StarOperator,
@@ -38,6 +41,8 @@ pub(crate) enum Token {
     //loop
     Loop,
     Break,
+    //strings
+    DoubleQuotes,
 }
 
 #[derive(Debug, Clone)]
@@ -46,12 +51,12 @@ pub(crate) enum Expr {
     Int(i32),
     Bool(bool),
     Char(char),
+    String(Rc<str>),
     Binary {
         left: Box<Expr>,
         operator: BinaryOperator,
         right: Box<Expr>,
     },
-
     Var(String),
     VarId(usize),
 }
@@ -67,6 +72,7 @@ pub(crate) enum BinaryOperator {
     MoreThan,
     NotEqual,
 }
+
 #[derive(Debug)]
 pub(crate) enum RuntimeError {
     UndefinedVariable(String),
@@ -143,11 +149,12 @@ pub enum Pattern {
     Wildcard,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub(crate) enum Value {
     Int(i32),
     Char(char),
     Bool(bool),
+    String(Rc<str>),
     Null,
 }
 
@@ -177,6 +184,7 @@ impl fmt::Display for Value {
             Value::Int(n) => write!(f, "{n}"),
             Value::Bool(b) => write!(f, "{b}"),
             Value::Char(c) => write!(f, "{c}"),
+            Value::String(s) => write!(f, "{s}"),
             Value::Null => write!(f, "null"),
         }
     }
