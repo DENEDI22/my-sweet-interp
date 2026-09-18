@@ -54,7 +54,15 @@ pub fn tokenize(source: &str) -> Vec<Token> {
                 tokens.push(tokenize_word(&word));
             }
 
-            '\'' => tokens.push(Token::SingleQuote),
+            '\'' => {
+                tokens.push(Token::SingleQuote);
+                let v = chars.next().unwrap();
+                if matches!(chars.peek().unwrap(), '\'') {
+                    tokens.push(Token::CharValue(v));
+                    tokens.push(Token::SingleQuote);
+                    chars.next().unwrap();
+                }
+            }
             '+' => tokens.push(Token::PlusOperator),
             '-' => tokens.push(Token::MinusOperator),
             '*' => tokens.push(Token::StarOperator),

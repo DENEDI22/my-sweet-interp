@@ -217,19 +217,19 @@ fn eval_binary(left: &Value, right: &Value, op: &BinaryOperator) -> Result<Value
             Ok(Value::String(Rc::from(s)))
         }
         (Value::String(a), BinaryOperator::Add, Value::Char(b)) => {
-            let mut s = String::with_capacity(a.len() + 4);
+            let mut s = String::with_capacity(a.len() + 1);
             s.push_str(a);
             s.push(*b);
             Ok(Value::String(Rc::from(s)))
         }
         (Value::Char(a), BinaryOperator::Add, Value::String(b)) => {
-            let mut s = String::with_capacity(b.len() + 4);
+            let mut s = String::with_capacity(b.len() + 1);
             s.push(*a);
             s.push_str(b);
             Ok(Value::String(Rc::from(s)))
         }
         (Value::Char(a), BinaryOperator::Add, Value::Char(b)) => {
-            let mut s = String::with_capacity(8);
+            let mut s = String::with_capacity(2);
             s.push(*a);
             s.push(*b);
             Ok(Value::String(Rc::from(s)))

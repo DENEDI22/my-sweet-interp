@@ -17,6 +17,7 @@ pub(crate) enum Token {
     Ident(String),
     IntValue(i32),
     StringValue(Rc<str>),
+    CharValue(char),
     PlusOperator,
     MinusOperator,
     StarOperator,

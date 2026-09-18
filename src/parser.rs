@@ -206,23 +206,10 @@ fn parse_primary(tokens: &[Token], pos: &mut usize) -> Expr {
         }
         Token::SingleQuote => {
             *pos += 1;
-            let expected_char: char;
-            match &tokens[*pos] {
-                Token::Ident(c) => {
-                    if c.len() > 1 {
-                        panic!("Only one character is expected");
-                    }
-                    expected_char = c.chars().next().unwrap();
-                }
-
-                Token::IntValue(c) => {
-                    if c.to_string().len() > 1 {
-                        panic!("Only one character is expected");
-                    }
-                    expected_char = c.to_string().chars().next().unwrap();
-                }
+            let expected_char = match &tokens[*pos] {
+                Token::CharValue(c) => c,
                 _ => panic!("Unexpected token for char type value"),
-            }
+            };
             *pos += 1;
             assert_eq!(
                 tokens[*pos],
@@ -230,7 +217,7 @@ fn parse_primary(tokens: &[Token], pos: &mut usize) -> Expr {
                 "expected ''' (single quote)"
             );
             *pos += 1;
-            Expr::Char(expected_char)
+            Expr::Char(*expected_char)
         }
 
         Token::DoubleQuotes => {
