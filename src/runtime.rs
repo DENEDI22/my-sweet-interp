@@ -90,7 +90,13 @@ fn run_statement(
         },
         Statement::VarAssignById { id, value } => {
             let v = eval(value, &vars, resolver)?;
-            vars[*id] = v;
+            if are_same_type(&vars[*id], &v) {
+                vars[*id] = v;
+            } else {
+                return Err(RuntimeError::Exception(
+                    "Type mismatch by assigning".to_string(),
+                ));
+            }
         }
         Statement::Match { subject, arms } => {
             let subj = eval(subject, vars, resolver)?;
@@ -199,14 +205,10 @@ fn eval_binary(left: &Value, right: &Value, op: &BinaryOperator) -> Result<Value
             Ok(Value::Int(a / b))
         }
         //logical
-        (Value::Int(a), BinaryOperator::Equal, Value::Int(b)) => Ok(Value::Bool(a == b)),
+        (l, BinaryOperator::Equal, r) => Ok(Value::Bool(l == r)),
+        (l, BinaryOperator::NotEqual, r) => Ok(Value::Bool(l != r)),
         (Value::Int(a), BinaryOperator::LessThan, Value::Int(b)) => Ok(Value::Bool(a < b)),
         (Value::Int(a), BinaryOperator::MoreThan, Value::Int(b)) => Ok(Value::Bool(a > b)),
-        (Value::Int(a), BinaryOperator::NotEqual, Value::Int(b)) => Ok(Value::Bool(a != b)),
-        (Value::Bool(a), BinaryOperator::NotEqual, Value::Bool(b)) => Ok(Value::Bool(a != b)),
-        (Value::Bool(a), BinaryOperator::Equal, Value::Bool(b)) => Ok(Value::Bool(a == b)),
-        (Value::String(a), BinaryOperator::Equal, Value::String(b)) => Ok(Value::Bool(a == b)),
-        (Value::String(a), BinaryOperator::NotEqual, Value::String(b)) => Ok(Value::Bool(a != b)),
         //concat
         (Value::String(a), BinaryOperator::Add, Value::String(b)) => {
             let mut s = String::with_capacity(a.len() + b.len());
@@ -214,8 +216,42 @@ fn eval_binary(left: &Value, right: &Value, op: &BinaryOperator) -> Result<Value
             s.push_str(b);
             Ok(Value::String(Rc::from(s)))
         }
+        (Value::String(a), BinaryOperator::Add, Value::Char(b)) => {
+            let mut s = String::with_capacity(a.len() + 4);
+            s.push_str(a);
+            s.push(*b);
+            Ok(Value::String(Rc::from(s)))
+        }
+        (Value::Char(a), BinaryOperator::Add, Value::String(b)) => {
+            let mut s = String::with_capacity(b.len() + 4);
+            s.push(*a);
+            s.push_str(b);
+            Ok(Value::String(Rc::from(s)))
+        }
+        (Value::Char(a), BinaryOperator::Add, Value::Char(b)) => {
+            let mut s = String::with_capacity(8);
+            s.push(*a);
+            s.push(*b);
+            Ok(Value::String(Rc::from(s)))
+        }
+        (Value::String(a), BinaryOperator::Add, Value::Int(b)) => {
+            let int_converted = b.to_string();
+            let mut s = String::with_capacity(a.len() + int_converted.len());
+            s.push_str(a);
+            s.push_str(&int_converted);
+            Ok(Value::String(Rc::from(s)))
+        }
+        (Value::Int(a), BinaryOperator::Add, Value::String(b)) => {
+            let int_converted = a.to_string();
+            let mut s = String::with_capacity(b.len() + int_converted.len());
+            s.push_str(&int_converted);
+            s.push_str(b);
+            Ok(Value::String(Rc::from(s)))
+        }
         (Value::String(a), BinaryOperator::Add, Value::Null) => Ok(Value::String(a.clone())),
         (Value::Null, BinaryOperator::Add, Value::String(a)) => Ok(Value::String(a.clone())),
+        (Value::Char(a), BinaryOperator::Add, Value::Null) => Ok(Value::Char(*a)),
+        (Value::Null, BinaryOperator::Add, Value::Char(a)) => Ok(Value::Char(*a)),
         (left, op, right) => Err(RuntimeError::InvalidOperation {
             left: left.clone(),
             right: right.clone(),
