@@ -93,6 +93,7 @@ impl Resolver {
                 body: self.resolve_block(body)?,
             }),
             Statement::Break => Ok(Statement::Break),
+            Statement::Continue => Ok(Statement::Continue),
         }
     }
 

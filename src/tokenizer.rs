@@ -15,6 +15,7 @@ fn tokenize_word(word: &str) -> Token {
         "match" => Token::Match,
         "loop" => Token::Loop,
         "break" => Token::Break,
+        "continue" => Token::Continue,
         _ => Token::Ident(word.to_string()),
     }
 }

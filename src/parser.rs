@@ -108,6 +108,10 @@ fn parse_statement(tokens: &[Token], current: &mut usize) -> Statement {
             *current += 1;
             Statement::Break
         }
+        Token::Continue => {
+            *current += 1;
+            Statement::Continue
+        }
         token => {
             panic!("Unexpected token: {token:?} at position {current:?}");
         }

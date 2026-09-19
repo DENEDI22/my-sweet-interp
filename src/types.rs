@@ -42,6 +42,7 @@ pub(crate) enum Token {
     //loop
     Loop,
     Break,
+    Continue,
     //strings
     DoubleQuotes,
 }
@@ -101,6 +102,7 @@ pub enum ResolutionError {
 pub(crate) enum FlowState {
     None,
     Break,
+    Continue,
     Finished,
 }
 
@@ -136,6 +138,7 @@ pub(crate) enum Statement {
         body: Vec<Statement>,
     },
     Break,
+    Continue,
 }
 
 #[derive(Debug, Clone)]

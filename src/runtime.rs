@@ -143,6 +143,7 @@ fn run_statement(
             run_loop(body, vars, resolver)?;
         }
         Statement::Break => return Ok(FlowState::Break),
+        Statement::Continue => return Ok(FlowState::Continue),
         Statement::VarDecl {
             name: _,
             value: _,

@@ -1,13 +1,19 @@
-var str i = "!";
 var int counter = 0;
 loop {
-    match counter < 100000 {
-        true {
-            i = i + "!";
+    match counter {
+        0 {
+            counter = counter + 1;
+            print(counter);
+        }
+        1 {
+            counter = counter + 1;
+            continue
             counter = counter + 1;
         }
         _ {
+            counter = counter + 1;
             break
         }
     }
 }
+print(counter);
