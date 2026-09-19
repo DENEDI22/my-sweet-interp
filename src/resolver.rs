@@ -77,6 +77,9 @@ impl Resolver {
                     let rpattern = match &arm.pattern {
                         Pattern::Literal(expr) => Pattern::Literal(self.resolve_expr(&expr)?),
                         Pattern::Wildcard => Pattern::Wildcard,
+                        Pattern::HalfBinary(binary_operator, expr) => {
+                            Pattern::HalfBinary(binary_operator.clone(), self.resolve_expr(expr)?)
+                        }
                     };
                     let rbody = self.resolve_block(&arm.body)?;
                     rarms.push(MatchArm {

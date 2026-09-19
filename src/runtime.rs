@@ -4,7 +4,7 @@ use crate::{
     resolver::Resolver,
     types::{
         BinaryOperator, Expr, FlowState,
-        Pattern::{Literal, Wildcard},
+        Pattern::{HalfBinary, Literal, Wildcard},
         RuntimeError::{self, Exception},
         Statement, Type, Value,
     },
@@ -100,42 +100,17 @@ fn run_statement(
         }
         Statement::Match { subject, arms } => {
             let subj = eval(subject, vars, resolver)?;
-            let mut arm_pattern_values: Vec<Value> = Vec::new();
-            let mut has_wildcard_statement = false;
             for arm in arms {
-                match &arm.pattern {
-                    Literal(expr) => {
-                        let value = eval(expr, vars, resolver)?;
-                        if are_same_type(&subj, &value) & !arm_pattern_values.contains(&value) {
-                            arm_pattern_values.push(value);
-                        } else {
-                            return Err(RuntimeError::Exception(
-                                "Error while processing match statement".to_string(),
-                            ));
-                        }
+                let matched = match &arm.pattern {
+                    Wildcard => true,
+                    Literal(expr) => eval(expr, vars, resolver)? == subj,
+                    HalfBinary(op, expr) => {
+                        let rhs = eval(expr, vars, resolver)?;
+                        eval_binary(&subj, &rhs, op)? == Value::Bool(true)
                     }
-                    Wildcard => {
-                        if !has_wildcard_statement {
-                            has_wildcard_statement = true;
-                        } else {
-                            return Err(Exception(
-                                "More than one wildcard statement in match".to_string(),
-                            ));
-                        }
-                    }
-                }
-            }
-            for arm in arms {
-                match &arm.pattern {
-                    Literal(expr) => {
-                        let value = eval(expr, vars, resolver)?;
-                        if value == subj {
-                            return run_block(&arm.body, vars, resolver);
-                        }
-                    }
-                    Wildcard => {
-                        return run_block(&arm.body, vars, resolver);
-                    }
+                };
+                if matched {
+                    return run_block(&arm.body, vars, resolver);
                 }
             }
         }

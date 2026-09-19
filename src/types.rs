@@ -150,6 +150,7 @@ pub struct MatchArm {
 #[derive(Debug, Clone)]
 pub enum Pattern {
     Literal(Expr),
+    HalfBinary(BinaryOperator, Expr),
     Wildcard,
 }
 

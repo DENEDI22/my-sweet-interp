@@ -72,6 +72,7 @@ fn parse_statement(tokens: &[Token], current: &mut usize) -> Statement {
         Token::Match => {
             *current += 1;
             let subj = parse_expression(tokens, current);
+            let mut has_wildcard = false;
             assert_eq!(tokens[*current], Token::CurlyBraceOpen, "expected '{{'");
             *current += 1;
             let mut arms: Vec<MatchArm> = Vec::new();
@@ -79,9 +80,33 @@ fn parse_statement(tokens: &[Token], current: &mut usize) -> Statement {
                 let arm_pattern: Pattern = match tokens[*current] {
                     Token::Wildcard => {
                         *current += 1;
+                        if has_wildcard {
+                            panic!("More than one wildcard found!")
+                        }
+                        has_wildcard = true;
                         Pattern::Wildcard
                     }
-                    _ => Pattern::Literal(parse_expression(tokens, current)),
+                    Token::Equal | Token::NotEqual | Token::LessThan | Token::MoreThan => {
+                        if has_wildcard {
+                            panic!("Wildcard has to be the last statement in the match expression")
+                        }
+                        let op = match tokens[*current] {
+                            Token::Equal => Some(BinaryOperator::Equal),
+                            Token::NotEqual => Some(BinaryOperator::NotEqual),
+                            Token::LessThan => Some(BinaryOperator::LessThan),
+                            Token::MoreThan => Some(BinaryOperator::MoreThan),
+                            _ => panic!("unexpected opeartor in hals-binary expression"),
+                        }
+                        .unwrap();
+                        *current += 1;
+                        Pattern::HalfBinary(op, parse_additive(tokens, current))
+                    }
+                    _ => {
+                        if has_wildcard {
+                            panic!("Wildcard has to be the last statement in the match expression")
+                        }
+                        Pattern::Literal(parse_expression(tokens, current))
+                    }
                 };
                 assert_eq!(tokens[*current], Token::CurlyBraceOpen, "expected '{{'");
                 let body = parse_block(tokens, current);

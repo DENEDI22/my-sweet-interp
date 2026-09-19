@@ -1,17 +1,18 @@
 var int counter = 0;
+//things whatever...j lksjdfölsa
 loop {
     match counter {
-        0 {
+        < 10 {
             counter = counter + 1;
             print(counter);
         }
-        1 {
+        < 150 {
             counter = counter + 1;
             continue
-            counter = counter + 1;
+            //just a comment for fun...
+            print(counter);
         }
         _ {
-            counter = counter + 1;
             break
         }
     }

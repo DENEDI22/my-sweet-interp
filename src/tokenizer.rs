@@ -67,7 +67,18 @@ pub fn tokenize(source: &str) -> Vec<Token> {
             '+' => tokens.push(Token::PlusOperator),
             '-' => tokens.push(Token::MinusOperator),
             '*' => tokens.push(Token::StarOperator),
-            '/' => tokens.push(Token::SlashOperator),
+            '/' => {
+                if matches!(chars.peek().unwrap(), '/') {
+                    chars.next().unwrap();
+                    while let Some(next) = chars.next() {
+                        if next == '\n' {
+                            break;
+                        }
+                    }
+                } else {
+                    tokens.push(Token::SlashOperator)
+                }
+            }
 
             '<' => tokens.push(Token::LessThan),
             '>' => tokens.push(Token::MoreThan),
@@ -111,7 +122,6 @@ pub fn tokenize(source: &str) -> Vec<Token> {
             }
 
             c if c.is_whitespace() => {}
-
             _ => panic!("Unknown character"),
         }
     }
