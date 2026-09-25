@@ -1,4 +1,4 @@
-use crate::{parser::parse, resolver::Resolver, runtime::run, tokenizer::tokenize};
+use crate::{parser::parse, resolver::Resolver, runtime::Runtime, tokenizer::tokenize};
 use std::fs;
 mod parser;
 mod resolver;
@@ -35,13 +35,16 @@ fn main() {
         }
         "run" => {
             match resolver.resolve_block(&parse(&tokens)) {
-                Ok(s) => match run(&s, &resolver) {
-                    Ok(_) => std::process::exit(0),
-                    Err(e) => {
-                        print!("ERROR: {e}");
-                        std::process::exit(1);
+                Ok(s) => {
+                    let mut runtime = Runtime::new(resolver);
+                    match runtime.run(&s) {
+                        Ok(_) => std::process::exit(0),
+                        Err(e) => {
+                            print!("ERROR: {e}");
+                            std::process::exit(1);
+                        }
                     }
-                },
+                }
 
                 Err(e) => {
                     print!("ERROR: {e:?}");

@@ -9,6 +9,7 @@ fn tokenize_word(word: &str) -> Token {
         "bool" => Token::BoolTypeLiteral,
         "int" => Token::IntTypeLiteral,
         "str" => Token::StringTypeLiteral,
+        "list" => Token::ListTypeLiteral,
         "true" => Token::True,
         "false" => Token::False,
         "null" => Token::Null,
@@ -120,6 +121,11 @@ pub fn tokenize(source: &str) -> Vec<Token> {
                     panic!("Expected closing DoubleQuotes")
                 }
             }
+
+            '[' => tokens.push(Token::SquaredParenOpen),
+            ']' => tokens.push(Token::SquaredParenClose),
+            '.' => tokens.push(Token::Dot),
+            ',' => tokens.push(Token::Comma),
 
             c if c.is_whitespace() => {}
             _ => panic!("Unknown character"),

@@ -1,4 +1,10 @@
-use crate::types::{BinaryOperator, Expr, MatchArm, Pattern, Statement, Token, Type};
+use core::panic;
+
+use crate::types::{
+    BinaryOperator, Expr, MatchArm, Pattern, Statement,
+    Token::{self},
+    Type,
+};
 
 pub fn parse(tokens: &[Token]) -> Vec<Statement> {
     let mut statements = Vec::new();
@@ -11,21 +17,32 @@ pub fn parse(tokens: &[Token]) -> Vec<Statement> {
     statements
 }
 
+fn parse_type_literal(tokens: &[Token], current: &mut usize) -> Type {
+    let expected_type = match &tokens[*current] {
+        Token::IntTypeLiteral => Type::Int,
+        Token::CharTypeLiteral => Type::Char,
+        Token::BoolTypeLiteral => Type::Bool,
+        Token::StringTypeLiteral => Type::String,
+        Token::ListTypeLiteral => {
+            *current += 1;
+            assert_eq!(tokens[*current], Token::SquaredParenOpen);
+            *current += 1;
+            let expected_type = parse_type_literal(tokens, current);
+            assert_eq!(tokens[*current], Token::SquaredParenClose);
+            Type::List(Box::new(expected_type))
+        }
+        _ => panic!("Unknown or undefined type"),
+    };
+    *current += 1;
+    expected_type
+}
 fn parse_statement(tokens: &[Token], current: &mut usize) -> Statement {
     match &tokens[*current] {
         Token::Var => {
             let name: String;
-            let var_type: Type;
             *current += 1;
             //Define type
-            match &tokens[*current] {
-                Token::IntTypeLiteral => var_type = Type::Int,
-                Token::CharTypeLiteral => var_type = Type::Char,
-                Token::BoolTypeLiteral => var_type = Type::Bool,
-                Token::StringTypeLiteral => var_type = Type::String,
-                _ => panic!("Unknown or undefined type"),
-            }
-            *current += 1;
+            let var_type = parse_type_literal(tokens, current);
             //Find name
             match &tokens[*current] {
                 Token::Ident(x) => name = x.to_string(),
@@ -66,7 +83,31 @@ fn parse_statement(tokens: &[Token], current: &mut usize) -> Statement {
                     *current += 1;
                     Statement::VarAssign { name, value }
                 }
-                _other => panic!(),
+                Some(Token::SquaredParenOpen) | Some(Token::Dot) => {
+                    let target = parse_expression(tokens, current);
+                    match &tokens[*current] {
+                        Token::Assign => {
+                            *current += 1;
+                            let value = parse_expression(tokens, current);
+                            assert_eq!(tokens[*current], Token::Semicolon, "expected ';'");
+                            *current += 1;
+                            match target {
+                                Expr::Index { target, index } => Statement::IndexAssign {
+                                    target,
+                                    index,
+                                    value,
+                                },
+                                other => panic!("cannot assign to {:?}", other),
+                            }
+                        }
+                        Token::Semicolon => {
+                            *current += 1;
+                            Statement::Expr(target)
+                        }
+                        other => panic!("expected '=' or ';' after expression, got {:?}", other),
+                    }
+                }
+                other => panic!("unexpected token after identifier: {:?}", other),
             }
         }
         Token::Match => {
@@ -197,7 +238,7 @@ fn parse_additive(tokens: &[Token], pos: &mut usize) -> Expr {
     left
 }
 fn parse_term(tokens: &[Token], pos: &mut usize) -> Expr {
-    let mut left = parse_primary(tokens, pos);
+    let mut left = parse_postfix(tokens, pos);
     while let Some(tok) = tokens.get(*pos) {
         let op = match tok {
             Token::StarOperator => BinaryOperator::Multiply,
@@ -273,11 +314,99 @@ fn parse_primary(tokens: &[Token], pos: &mut usize) -> Expr {
             e
         }
 
+        Token::SquaredParenOpen => {
+            *pos += 1;
+            let mut vals: Vec<Expr> = Vec::new();
+            if !matches!(tokens[*pos], Token::SquaredParenClose) {
+                loop {
+                    vals.push(parse_expression(tokens, pos));
+                    match tokens[*pos] {
+                        Token::Comma => *pos += 1,
+                        Token::SquaredParenClose => break,
+                        _ => panic!("Unexpected token in array literal description"),
+                    }
+                }
+            }
+            *pos += 1;
+            Expr::List(vals)
+        }
+
         Token::Ident(name) => {
             *pos += 1;
-            Expr::Var(name.clone())
+            match &tokens[*pos + 1] {
+                Token::SquaredParenOpen => {
+                    *pos += 2;
+                    let ind = parse_expression(tokens, pos);
+                    Expr::Index {
+                        target: Box::new(Expr::Var(name.clone())),
+                        index: Box::new(ind),
+                    }
+                }
+                _ => Expr::Var(name.clone()),
+            }
         }
 
         t => panic!("Unexpected token in expression: {t:?}"),
     }
+}
+
+fn parse_postfix(tokens: &[Token], current: &mut usize) -> Expr {
+    let mut expr = parse_primary(tokens, current);
+
+    loop {
+        match &tokens[*current] {
+            Token::SquaredParenOpen => {
+                *current += 1;
+                let index = parse_expression(tokens, current);
+                assert_eq!(tokens[*current], Token::SquaredParenClose, "Expected ]");
+                *current += 1;
+                expr = Expr::Index {
+                    target: Box::new(expr),
+                    index: Box::new(index),
+                };
+            }
+            Token::Dot => {
+                *current += 1;
+                let name = match &tokens[*current] {
+                    Token::Ident(n) => n.to_string(),
+                    other => panic!("Expected method name after '.', got {:?}", other),
+                };
+                *current += 1;
+                assert_eq!(
+                    tokens[*current],
+                    Token::LeftParen,
+                    "Expected ( after method name"
+                );
+                *current += 1;
+                let args = parse_args(tokens, current);
+                expr = Expr::MethodCall {
+                    receiver: Box::new(expr),
+                    name,
+                    args,
+                };
+            }
+            _ => break,
+        }
+    }
+    expr
+}
+
+fn parse_args(tokens: &[Token], current: &mut usize) -> Vec<Expr> {
+    let mut args = Vec::new();
+    if tokens[*current] == Token::RightParen {
+        *current += 1;
+        return args;
+    }
+    loop {
+        args.push(parse_expression(tokens, current));
+        match &tokens[*current] {
+            Token::Comma => *current += 1,
+            Token::RightParen => {
+                *current += 1;
+                break;
+            }
+            other => panic!("Expected , or ) in argument list, got {:?}", other),
+        }
+    }
+    args
 }

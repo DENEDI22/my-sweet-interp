@@ -97,6 +97,16 @@ impl Resolver {
             }),
             Statement::Break => Ok(Statement::Break),
             Statement::Continue => Ok(Statement::Continue),
+            Statement::IndexAssign {
+                target,
+                index,
+                value,
+            } => Ok(Statement::IndexAssign {
+                target: Box::new(self.resolve_expr(target)?),
+                index: Box::new(self.resolve_expr(index)?),
+                value: self.resolve_expr(value)?,
+            }),
+            Statement::Expr(expr) => Ok(Statement::Expr(self.resolve_expr(expr)?)),
         }
     }
 
@@ -118,6 +128,28 @@ impl Resolver {
             Expr::Char(c) => Expr::Char(*c),
             Expr::String(s) => Expr::String(s.clone()),
             Expr::VarId(_) => unreachable!(),
+            Expr::List(exprs) => Expr::List(
+                exprs
+                    .into_iter()
+                    .map(|e| self.resolve_expr(e))
+                    .collect::<Result<_, _>>()?,
+            ),
+            Expr::Index { target, index } => Expr::Index {
+                target: Box::new(self.resolve_expr(target)?),
+                index: Box::new(self.resolve_expr(index)?),
+            },
+            Expr::MethodCall {
+                receiver,
+                name,
+                args,
+            } => Expr::MethodCall {
+                receiver: Box::new(self.resolve_expr(receiver)?),
+                name: name.clone(),
+                args: args
+                    .into_iter()
+                    .map(|e| self.resolve_expr(e))
+                    .collect::<Result<_, _>>()?,
+            },
         })
     }
 

@@ -1,11 +1,16 @@
-use std::{fmt, rc::Rc};
+use std::{
+    fmt::{self, write},
+    rc::Rc,
+};
 
 #[derive(Debug, Clone)]
 pub(crate) enum Type {
+    None,
     Int,
     Char,
     Bool,
     String,
+    List(Box<Type>),
 }
 #[derive(PartialEq, Debug, Clone)]
 pub(crate) enum Token {
@@ -18,6 +23,7 @@ pub(crate) enum Token {
     IntValue(i32),
     StringValue(Rc<str>),
     CharValue(char),
+    ListValue(Vec<Token>),
     PlusOperator,
     MinusOperator,
     StarOperator,
@@ -45,6 +51,12 @@ pub(crate) enum Token {
     Continue,
     //strings
     DoubleQuotes,
+    //arrays
+    ListTypeLiteral,
+    SquaredParenOpen,
+    SquaredParenClose,
+    Dot,
+    Comma,
 }
 
 #[derive(Debug, Clone)]
@@ -54,6 +66,7 @@ pub(crate) enum Expr {
     Bool(bool),
     Char(char),
     String(Rc<str>),
+    List(Vec<Expr>),
     Binary {
         left: Box<Expr>,
         operator: BinaryOperator,
@@ -61,6 +74,15 @@ pub(crate) enum Expr {
     },
     Var(String),
     VarId(usize),
+    Index {
+        target: Box<Expr>,
+        index: Box<Expr>,
+    },
+    MethodCall {
+        receiver: Box<Expr>,
+        name: String,
+        args: Vec<Expr>,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -139,6 +161,12 @@ pub(crate) enum Statement {
     },
     Break,
     Continue,
+    IndexAssign {
+        target: Box<Expr>,
+        index: Box<Expr>,
+        value: Expr,
+    },
+    Expr(Expr),
 }
 
 #[derive(Debug, Clone)]
@@ -160,7 +188,13 @@ pub(crate) enum Value {
     Char(char),
     Bool(bool),
     String(Rc<str>),
+    List(usize),
     Null,
+}
+
+#[derive(Debug)]
+pub(crate) enum Object {
+    List(Vec<Value>),
 }
 
 impl fmt::Display for RuntimeError {
@@ -191,6 +225,7 @@ impl fmt::Display for Value {
             Value::Char(c) => write!(f, "{c}"),
             Value::String(s) => write!(f, "{s}"),
             Value::Null => write!(f, "null"),
+            Value::List(i) => write!(f, "{i}"),
         }
     }
 }

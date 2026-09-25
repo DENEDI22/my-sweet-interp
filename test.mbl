@@ -1,20 +1,14 @@
-var int counter = 0;
-//things whatever...j lksjdfölsa
+var int i = 0;
+var list[int] arr = []; 
 loop {
-    match counter {
-        < 10 {
-            counter = counter + 1;
-            print(counter);
-        }
-        < 150 {
-            counter = counter + 1;
-            continue
-            //just a comment for fun...
-            print(counter);
+    match i < 10 {
+        true {
+            arr.push(i);
+            print(arr[i]);
+            i = i + 1;
         }
         _ {
             break
         }
     }
 }
-print(counter);
