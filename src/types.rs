@@ -3,7 +3,7 @@ use std::{
     rc::Rc,
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub(crate) enum Type {
     None,
     Int,
@@ -118,6 +118,12 @@ pub(crate) enum RuntimeError {
 pub enum ResolutionError {
     UndefinedVariable(String),
     VariableIsAlreadyDefined(String),
+}
+
+#[derive(Debug)]
+pub enum TypeError {
+    TypeMissmatch(String),
+    TypeMissing(String),
 }
 
 #[derive(Debug)]

@@ -4,6 +4,7 @@ mod parser;
 mod resolver;
 mod runtime;
 mod tokenizer;
+mod typechecker;
 mod types;
 fn main() {
     let args: Vec<String> = std::env::args().collect();
