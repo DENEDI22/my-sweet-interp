@@ -124,6 +124,7 @@ pub enum ResolutionError {
 pub enum TypeError {
     TypeMissmatch(String),
     TypeMissing(String),
+    SignatureError(String),
 }
 
 #[derive(Debug)]
